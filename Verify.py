@@ -15,11 +15,7 @@ for name in os.listdir(TARGET_HASH_DIR):
         src_hash = hashlib.md5(src.read()).hexdigest()
     
     with open(TARGET_HASH_DIR + name, "rb") as target:
-        bytes = target.read()
-        if b"2.0." in bytes:
-            compiler_version = int(bytes[bytes.find(b"2.0.")+4:bytes.find(b"2.0.")+8].decode())
-            #print("Shader: " + name + " Was built with: " + str(compiler_version))
-        target_hash = hashlib.md5(bytes).hexdigest()
+        target_hash = hashlib.md5(target.read()).hexdigest()
     
     if src_hash is not None and target_hash is not None:
         if src_hash != target_hash:
