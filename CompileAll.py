@@ -15,8 +15,8 @@ for i in range(len(files)):
         psh_file = OUT_DIR + file .replace(".hlsl", ".psh")
         
         compiler = "fxc-xbox-8276"
-        vertex_result = subprocess.run(compiler + " /Gfp /XOautoz /Tvs_3_0 /Evs_main /Fo" + vsh_file + " " + IN_DIR + file, shell=True, capture_output=True)
-        pixel_result = subprocess.run(compiler + " /Gfp /Tps_3_0 /Eps_main /Fo" + psh_file + " " + IN_DIR + file, shell=True, capture_output=True)
+        vertex_result = subprocess.run(compiler + " /XOautoz /Tvs_3_0 /Evs_main /Fo" + vsh_file + " " + IN_DIR + file, shell=True, capture_output=True)
+        pixel_result = subprocess.run(compiler + " /Tps_3_0 /Eps_main /Fo" + psh_file + " " + IN_DIR + file, shell=True, capture_output=True)
     
         if vertex_result.returncode != 0 and pixel_result.returncode != 0:
             print("Failed to compile shader: " + file)

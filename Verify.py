@@ -1,9 +1,11 @@
-import sys, os, hashlib
+import os, hashlib, math
 
 TARGET_HASH_DIR = "./target/"
 SOURCE_CHECK_DIR = "./compiled/"
 
-for name in os.listdir(TARGET_HASH_DIR):
+files = os.listdir(TARGET_HASH_DIR)
+match_count = 0
+for name in files:
     src_hash = None
     target_hash = None
     
@@ -21,7 +23,10 @@ for name in os.listdir(TARGET_HASH_DIR):
         if src_hash != target_hash:
             print("Failed to match: " + name + "!")
         else:
+            match_count += 1
             print("Matched: " + name + "!")
             pass
     else:
         print("Failed to compute hashes for shader: " + name)
+percent_matched = int(math.floor(match_count / len(files) * 100))
+print("Matched: " + str(match_count) + " out of " + str(len(files)) + " Shaders! (" + str(percent_matched) + "%)")
