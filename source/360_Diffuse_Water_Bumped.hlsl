@@ -10,11 +10,7 @@
 
 #define REFLECTION_TEXTURE TexMap4
 
-#ifdef USE_NEWER_GLOBALS_H
-#include "360_Globals_New.h"
-#else
 #include "360_Globals.h"
-#endif
 
 VS_OUTPUT vs_main( VS_INPUT IN )
 {

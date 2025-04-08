@@ -27,7 +27,7 @@ float4x2 VS_TexGenMatrix               : register( c20 );
 float3   VS_WorldCameraPosition        : register( c24 );
 float3   VS_LocalCameraPosition        : register( c25 );
 
-float2   VS_FogParameters              : register( c26 );
+float4   VS_FogParameters              : register( c26 );
 
 float4x2 VS_IconMatrix                 : register( c27 );
 float4   VS_IconDepth                  : register( c31 );
@@ -285,26 +285,26 @@ struct VS_OUTPUT
 
    #if defined( USES_DYNAMICSHADOWMAP )
 
-      float3 TexShadow     : TEXCOORD5;
+      float3 TexShadow     : TEXCOORD6;
 
    #endif
 
    #ifdef USES_WORLDPOSITION
 
-      float3 WorldPosition : TEXCOORD6;
+      float3 WorldPosition : TEXCOORD7;
 
    #endif
 
    #ifdef USES_WORLDNORMAL
 
-      float3 WorldNormal   : TEXCOORD7;
+      float3 WorldNormal   : TEXCOORD8;
 
    #endif
 
    #ifdef USES_BUMP
 
-      float3 WorldTangent  : TEXCOORD8;
-      float3 WorldBinormal : TEXCOORD9;
+      float3 WorldTangent  : TEXCOORD9;
+      float3 WorldBinormal : TEXCOORD10;
 
    #endif
 
@@ -371,7 +371,7 @@ struct VS_OUTPUT
 
       FOG.Distance = length( FOG.EyeVector );
       
-      FOG.Fog = saturate( FOG.Distance * VS_FogParameters.x + VS_FogParameters.y );
+      FOG.Fog = max( saturate( FOG.Distance * VS_FogParameters.x + VS_FogParameters.y ), VS_FogParameters.z );
       
       return FOG;
    }

@@ -1,2 +1,4 @@
 compiled/
 target/
+*.asm
+*.txt
