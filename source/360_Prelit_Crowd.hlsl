@@ -2,7 +2,6 @@
 #define POSITION_ALREADY_IN_WORLD_SPACE
 #define TEXCOORD0_IS_FULL_VECTOR
 
-#define USES_WORLDSHADOWMAP
 #define USES_COLOR
 #define USES_TEXGEN0
 #define USES_FOG
@@ -20,8 +19,6 @@ VS_OUTPUT vs_main( VS_INPUT IN )
    OUT.Position      = mul( IN.Position, VS_WorldViewProjMatrix );
    OUT.Color         = IN.Color;
    OUT.TexGen0       = mul( float3( IN.TexCoord0.xy, 1 ), VS_TexGenMatrix );
-   OUT.TexCoord2     = ( IN.Position.xz - VS_WorldShadowMapRegion.xy ) * VS_WorldShadowMapRegion.zw;
-   OUT.TexCoord2.y   = 1 - OUT.TexCoord2.y;
    OUT.Fog           = CalculateFog( IN.Position ).Fog;
 
    return OUT;
