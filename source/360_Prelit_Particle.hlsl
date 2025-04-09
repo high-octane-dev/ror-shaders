@@ -16,7 +16,8 @@ VS_OUTPUT vs_main( VS_INPUT IN )
    
    float maxScale = fog.Distance * 0.20;
 
-   float4 worldPosition = IN.Position + VS_ParticleDeltaVectors[ IN.Data.x ] * min( IN.Data.y, maxScale );
+   float4 worldPosition = IN.Position * min( IN.Data.y, maxScale );
+   // float4 worldPosition = IN.Position + VS_ParticleDeltaVectors[ IN.Data.x ] * min( IN.Data.y, maxScale );
    
    OUT.Position      = mul( worldPosition, VS_WorldViewProjMatrix );
    OUT.Color         = float4( 1, 1, 1, saturate( IN.Data.z ) );

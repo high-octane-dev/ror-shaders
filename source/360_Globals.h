@@ -42,8 +42,9 @@ float4   VS_ShrubberyScale             : register( c44 );
 float4   VS_ShrubberyOffset            : register( c45 );
 float2   VS_ShrubberyRange             : register( c46 );
 
-float4   VS_ParticleDeltaVectors[ 4 ]  : register( c47 );
-float3   VS_ParticleColor[ 4 ]         : register( c51 );
+float4   VS_ClampFarZ                  : register( c47 );
+// float4   VS_ParticleDeltaVectors[ 4 ]  : register( c47 );
+// float3   VS_ParticleColor[ 4 ]         : register( c51 );
 
 float4   VS_WorldShadowMapRegion       : register( c55 );
 
@@ -397,6 +398,7 @@ VS_OUTPUT GenerateVertexShaderOutput( VS_INPUT IN )
       #define WORLD_MATRIX VS_WorldMatrix
 
       OUT.Position = mul( IN.Position, VS_WorldViewProjMatrix );
+      OUT.Position.z = max( OUT.Position.z, VS_ClampFarZ.x );
 
       #if defined( USES_WORLDPOSITION ) || defined( USES_WORLDSHADOWMAP )
 
