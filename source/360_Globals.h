@@ -14,6 +14,7 @@
 #ifdef USES_LIGHTMAP
 
    #define USES_DYNAMICSHADOWMAP
+   #define USES_WORLDSHADOWMAP
 
 #endif
 
@@ -21,7 +22,9 @@ float4x4 VS_WorldMatrix                : register( c0 );
 float4x4 VS_WorldViewMatrix            : register( c4 );
 float4x4 VS_ViewProjMatrix             : register( c8 );
 float4x4 VS_WorldViewProjMatrix        : register( c12 );
-float4x4 VS_ShadowWorldViewProjMatrix  : register( c16 );
+float4x4 VS_ShadowWorldViewProjMatrix0  : register( c16 );
+float4x4 VS_ShadowWorldViewProjMatrix1  : register( c216 );
+float4x4 VS_ShadowWorldViewProjMatrix2  : register( c220 );
 float4x2 VS_TexGenMatrix               : register( c20 );
 
 float3   VS_WorldCameraPosition        : register( c24 );
@@ -287,7 +290,7 @@ struct VS_OUTPUT
 
    #if defined( USES_DYNAMICSHADOWMAP )
 
-      float3 TexShadow     : TEXCOORD6;
+      float4 TexShadow0     : TEXCOORD6;
 
    #endif
 
@@ -307,6 +310,13 @@ struct VS_OUTPUT
 
       float3 WorldTangent  : TEXCOORD9;
       float3 WorldBinormal : TEXCOORD10;
+
+   #endif
+
+   #if defined( USES_DYNAMICSHADOWMAP )
+
+      float4 TexShadow1     : TEXCOORD11;
+      float4 TexShadow2     : TEXCOORD12;
 
    #endif
 
@@ -423,7 +433,9 @@ VS_OUTPUT GenerateVertexShaderOutput( VS_INPUT IN )
 
    #ifdef USES_DYNAMICSHADOWMAP
 
-      OUT.TexShadow = mul( IN.Position, VS_ShadowWorldViewProjMatrix );
+      OUT.TexShadow0 = mul( IN.Position, VS_ShadowWorldViewProjMatrix0 );
+      OUT.TexShadow1 = mul( IN.Position, VS_ShadowWorldViewProjMatrix1 );
+      OUT.TexShadow2 = mul( IN.Position, VS_ShadowWorldViewProjMatrix2 );
 
    #endif
 
@@ -652,7 +664,7 @@ LIGHT_OUTPUT CalculateBlendColor( LIGHT_OUTPUT from, LIGHT_OUTPUT to, float4 ver
 
 float3 CalculateShadowColor( VS_OUTPUT IN, float3 surfaceColor )
 {
-   float surfaceAlpha = ( length( IN.TexShadow.xy * 2.0 - 1.0 ) - 0.8 ) * 5.0;
+   float surfaceAlpha = ( length( IN.TexShadow0.xy * 2.0 - 1.0 ) - 0.8 ) * 5.0;
 
    if ( surfaceAlpha >= 1.0 )
    {
@@ -662,17 +674,17 @@ float3 CalculateShadowColor( VS_OUTPUT IN, float3 surfaceColor )
    {
       float offset = 1.0 / 1344.0;
 
-      float depth1 = tex2D( TexMap8,  IN.TexShadow + float2(     0.0,  offset ) ).r;
-      float depth2 = tex2D( TexMap9,  IN.TexShadow + float2( -offset,     0.0 ) ).r;
-      float depth3 = tex2D( TexMap10, IN.TexShadow + float2(     0.0,     0.0 ) ).r;
-      float depth4 = tex2D( TexMap11, IN.TexShadow + float2(  offset,     0.0 ) ).r;
-      float depth5 = tex2D( TexMap12, IN.TexShadow + float2(     0.0, -offset ) ).r;
+      float depth1 = tex2D( TexMap8,  IN.TexShadow0 + float2(     0.0,  offset ) ).r;
+      float depth2 = tex2D( TexMap9,  IN.TexShadow0 + float2( -offset,     0.0 ) ).r;
+      float depth3 = tex2D( TexMap10, IN.TexShadow0 + float2(     0.0,     0.0 ) ).r;
+      float depth4 = tex2D( TexMap11, IN.TexShadow0 + float2(  offset,     0.0 ) ).r;
+      float depth5 = tex2D( TexMap12, IN.TexShadow0 + float2(     0.0, -offset ) ).r;
 
-      float alpha1 = step( IN.TexShadow.z, depth1 );
-      float alpha2 = step( IN.TexShadow.z, depth2 );
-      float alpha3 = step( IN.TexShadow.z, depth3 );
-      float alpha4 = step( IN.TexShadow.z, depth4 );
-      float alpha5 = step( IN.TexShadow.z, depth5 );
+      float alpha1 = step( IN.TexShadow0.z, depth1 );
+      float alpha2 = step( IN.TexShadow0.z, depth2 );
+      float alpha3 = step( IN.TexShadow0.z, depth3 );
+      float alpha4 = step( IN.TexShadow0.z, depth4 );
+      float alpha5 = step( IN.TexShadow0.z, depth5 );
 
       float3 shadowColor = lerp( surfaceColor, PS_ShadowColor, ( alpha1 + alpha2 + alpha3 + alpha4 + alpha5 ) * 0.20 );
 
