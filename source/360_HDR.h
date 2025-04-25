@@ -1,4 +1,5 @@
 
+float2 VS_HDR_BlurDirection      : register( c16 );
 float1 PS_HDR_Threshold          : register( c16 );
 float2 PS_HDR_Speed              : register( c17 );
 float2 PS_HDR_Mix                : register( c18 );

@@ -80,6 +80,7 @@ float4   PS_InverseDepthProjection     : register( c14 );
 float2   PS_DistanceFadeMinMax         : register( c15 );
 float    PS_GlossPower                 : register( c98 );
 float3   PS_ShadowColor                : register( c99 );
+float    PS_MudLevel                   : register( c100 );
 
 sampler  TexMap[ 16 ]                  : register( s0 );
 
@@ -477,7 +478,6 @@ VS_OUTPUT GenerateVertexShaderOutput( VS_INPUT IN )
    #ifdef USES_WORLDSHADOWMAP
    
       OUT.TexCoord2 = ( worldPosition.xz - VS_WorldShadowMapRegion.xy ) * VS_WorldShadowMapRegion.zw;
-      OUT.TexCoord2.y = 1 - OUT.TexCoord2.y;
 
    #endif
 
