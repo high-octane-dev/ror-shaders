@@ -20,6 +20,7 @@ for i in range(len(files)):
     
         if vertex_result.returncode != 0 and pixel_result.returncode != 0:
             print("Failed to compile shader: " + file)
+            print(compiler + " /XOautoz /Tvs_3_0 /Evs_main /Fo" + vsh_file + " " + IN_DIR + file)
         elif vertex_result.returncode == 0 and pixel_result.returncode == 0:
             print("Successfully compiled shader: " + file + " (" + str(percent_complete) + "%)")
             compiled_shaders += 1
