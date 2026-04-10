@@ -9,13 +9,12 @@
 
 VS_OUTPUT vs_main( VS_INPUT IN )
 {
-	float4 worldPosition = ( IN.Position * VS_ShrubberyScale + VS_ShrubberyOffset ) + ( IN.Delta * VS_VegetationVector );
-	
+	float3 worldPosition = ( IN.Position.xyz * VS_ShrubberyScale.xyz + VS_ShrubberyOffset.xyz ) + ( IN.Delta.xyz * VS_VegetationVector.xyz );
 	FOG_OUTPUT fog = CalculateFog( worldPosition );
 	
 	VS_OUTPUT OUT;
 	
-	OUT.Position	= mul( worldPosition, VS_WorldViewProjMatrix );
+	OUT.Position	= mul( float4( worldPosition, 1.0 ), VS_WorldViewProjMatrix );
 	OUT.Color		= float4( VS_VegetationColors[ IN.Data.y ].rgb, 1 - ( fog.Distance - VS_ShrubberyRange.x ) * VS_ShrubberyRange.y );
 	OUT.TexCoord0	= IN.TexCoord0;
 	OUT.Fog			= fog.Fog;
