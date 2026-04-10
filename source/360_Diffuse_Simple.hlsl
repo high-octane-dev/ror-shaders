@@ -2,6 +2,7 @@
 #define USES_TEXCOORD0
 #define USES_WORLDNORMAL
 #define USES_OBJECTCOLORSCALE
+#define USES_SHADERCOLORSCALE
 #define USES_FOG
 
 #include "360_Globals.h"

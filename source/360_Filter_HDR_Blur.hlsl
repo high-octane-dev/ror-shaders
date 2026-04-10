@@ -1,20 +1,35 @@
 
 #define USES_TEXCOORD0
+#define USES_TEXCOORD1
+#define USES_TEXCOORD2
+#define USES_TEXCOORD3
+#define USES_TEXCOORD4
 
 #include "360_Globals.h"
 #include "360_HDR.h"
 
-VS_OUTPUT vs_main( VS_INPUT IN )
+struct VSOut {
+   float4 Position : SV_POSITION;
+   float2 TexCoord0 : TEXCOORD0;
+   float4 TexCoord1 : TEXCOORD1;
+   float4 TexCoord2 : TEXCOORD2;
+   float4 TexCoord3 : TEXCOORD3;
+   float4 TexCoord4 : TEXCOORD4;
+};
+
+VSOut vs_main( VS_INPUT IN )
 {
-    VS_OUTPUT OUT;
-    
-    OUT.Position  = IN.Position;
-    OUT.TexCoord0 = IN.TexCoord0;
-    
-    return OUT;
+   VSOut OUT;
+   OUT.Position = IN.Position;
+   OUT.TexCoord0 = IN.TexCoord0;
+   OUT.TexCoord1 = float4( IN.TexCoord0 + VS_HDR_BlurDirection, IN.TexCoord0 + VS_HDR_BlurDirection * 2.0 );
+   OUT.TexCoord2 = float4( IN.TexCoord0 + VS_HDR_BlurDirection * 3.0, IN.TexCoord0 + VS_HDR_BlurDirection * 4.0 );
+   OUT.TexCoord3 = float4( IN.TexCoord0 - VS_HDR_BlurDirection, IN.TexCoord0 - VS_HDR_BlurDirection * 2.0 );
+   OUT.TexCoord4 = float4( IN.TexCoord0 - VS_HDR_BlurDirection * 3.0, IN.TexCoord0 - VS_HDR_BlurDirection * 4.0 );
+   return OUT;
 }
 
-float4 ps_main( VS_OUTPUT IN ) : COLOR
+float4 ps_main( VSOut IN ) : COLOR
 {
    float3 centerColor = tex2D( TexMap7, IN.TexCoord0 );
    
