@@ -300,6 +300,13 @@ struct VS_OUTPUT
 
    #endif
 
+   #if defined( USES_DYNAMICSHADOWMAP )
+
+      float4 TexShadow1     : TEXCOORD11;
+      float4 TexShadow2     : TEXCOORD12;
+
+   #endif
+
    #ifdef USES_WORLDNORMAL
 
       float3 WorldNormal   : TEXCOORD8;
@@ -310,13 +317,6 @@ struct VS_OUTPUT
 
       float3 WorldTangent  : TEXCOORD9;
       float3 WorldBinormal : TEXCOORD10;
-
-   #endif
-
-   #if defined( USES_DYNAMICSHADOWMAP )
-
-      float4 TexShadow1     : TEXCOORD11;
-      float4 TexShadow2     : TEXCOORD12;
 
    #endif
 
