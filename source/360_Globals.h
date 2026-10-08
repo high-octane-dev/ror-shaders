@@ -544,11 +544,14 @@ struct LIGHT_OUTPUT
 {
    float3 NonAmbientColor;
    float3 AmbientColor;
+   float  Alpha;
 };
 
 LIGHT_OUTPUT CalculateLighting( LIGHT_INPUT IN )
 {
    LIGHT_OUTPUT OUT;
+
+   OUT.Alpha = 0;
 
    IN.WorldNormal = normalize( IN.WorldNormal );
 
@@ -561,7 +564,7 @@ LIGHT_OUTPUT CalculateLighting( LIGHT_INPUT IN )
       viewAngle = saturate( 1 - dot( eyeVector, IN.WorldNormal ) );
    }
 
-   float diffuseContribution = max( dot( IN.WorldNormal, PS_SunlightDirection ), 0 );
+   float diffuseContribution = saturate( dot( IN.WorldNormal, PS_SunlightDirection ) );
 
    #ifdef USES_TWOTONE
 
@@ -591,16 +594,13 @@ LIGHT_OUTPUT CalculateLighting( LIGHT_INPUT IN )
 
    if ( IN.WantSpecular )
    {
-      float3 specularContribution = 0;
+      float3 refVector = normalize( 2 * diffuseContribution * IN.WorldNormal - PS_SunlightDirection );
 
-      if ( diffuseContribution > 0 )
-      {
-         float3 refVector = normalize( 2 * diffuseContribution * IN.WorldNormal - PS_SunlightDirection );
-
-         specularContribution = pow( max( dot( refVector, eyeVector ), 0 ), IN.GlossPower * PS_GlossPower + 1 ) * IN.GlossLevel * ( PS_SunlightColor + PS_AmbientColor );
-      }
+      float3 specularContribution = pow( max( dot( refVector, eyeVector ), 0 ), max( IN.GlossPower, 0.01 ) * PS_GlossPower + 1.0 ) * IN.GlossLevel * ( PS_SunlightColor + PS_AmbientColor );
 
       OUT.NonAmbientColor += specularContribution;
+
+      OUT.Alpha = saturate( dot( specularContribution, 0.35 ) );
    }
 
    if ( IN.WantReflection )
@@ -613,7 +613,7 @@ LIGHT_OUTPUT CalculateLighting( LIGHT_INPUT IN )
 
       #else
 
-         float3 reflectionCoordinates = reflect( eyeVector, IN.WorldNormal );
+         float3 reflectionCoordinates = reflect( -eyeVector, IN.WorldNormal );
 
          float3 reflectionContribution = texCUBE( REFLECTION_TEXTURE, reflectionCoordinates );
 
@@ -621,10 +621,14 @@ LIGHT_OUTPUT CalculateLighting( LIGHT_INPUT IN )
 
       if ( IN.WantFresnel )
       {
-         IN.ReflectionLevel = IN.ReflectionLevel * viewAngle;
+         float fresnel = saturate( pow( saturate( 1.0 - dot( eyeVector, IN.WorldNormal ) ), 4 ) + 0.45 );
+
+         OUT.Alpha = max( OUT.Alpha, IN.ReflectionLevel * 0.55 + IN.ReflectionLevel * fresnel );
+
+         IN.ReflectionLevel = IN.ReflectionLevel * fresnel;
       }
 
-      OUT.AmbientColor = max( OUT.AmbientColor, lerp( OUT.AmbientColor, reflectionContribution, IN.ReflectionLevel ) );
+      OUT.AmbientColor += reflectionContribution * IN.ReflectionLevel;
    }
 
    return OUT;
@@ -639,8 +643,9 @@ LIGHT_OUTPUT CalculateBlendColor( LIGHT_OUTPUT from, float3 to, float4 vertexCol
 {
    LIGHT_OUTPUT L;
 
-   L.NonAmbientColor = lerp( from.NonAmbientColor, 0,  vertexColor.a );
-   L.AmbientColor    = lerp( from.AmbientColor,    to, vertexColor.a ) * vertexColor;
+   L.NonAmbientColor = lerp( from.NonAmbientColor, 0,                 vertexColor.a ) * vertexColor;
+   L.AmbientColor    = lerp( from.AmbientColor,    to * vertexColor, vertexColor.a );
+   L.Alpha           = 0;
 
    return L;
 }
@@ -649,8 +654,9 @@ LIGHT_OUTPUT CalculateBlendColor( float3 from, LIGHT_OUTPUT to, float4 vertexCol
 {
    LIGHT_OUTPUT L;
 
-   L.NonAmbientColor = lerp( 0,    to.NonAmbientColor, vertexColor.a );
-   L.AmbientColor    = lerp( from, to.AmbientColor,    vertexColor.a ) * vertexColor;
+   L.NonAmbientColor = lerp( 0,                   to.NonAmbientColor, vertexColor.a ) * vertexColor;
+   L.AmbientColor    = lerp( from * vertexColor, to.AmbientColor,    vertexColor.a );
+   L.Alpha           = 0;
 
    return L;
 }
@@ -659,8 +665,9 @@ LIGHT_OUTPUT CalculateBlendColor( LIGHT_OUTPUT from, LIGHT_OUTPUT to, float4 ver
 {
    LIGHT_OUTPUT L;
 
-   L.NonAmbientColor = lerp( from.NonAmbientColor, to.NonAmbientColor,  vertexColor.a );
-   L.AmbientColor    = lerp( from.AmbientColor,    to.AmbientColor,     vertexColor.a ) * vertexColor;
+   L.NonAmbientColor = lerp( from.NonAmbientColor, to.NonAmbientColor,  vertexColor.a ) * vertexColor;
+   L.AmbientColor    = lerp( from.AmbientColor,    to.AmbientColor,     vertexColor.a );
+   L.Alpha           = 0;
 
    return L;
 }
@@ -699,7 +706,7 @@ float3 CalculateShadowColor( VS_OUTPUT IN, float3 surfaceColor )
 
 #endif
 
-float4 CalculateFinalColor( VS_OUTPUT IN, LIGHT_OUTPUT L, float alpha )
+float4 ComposeFinalColor( VS_OUTPUT IN, LIGHT_OUTPUT L, float alpha )
 {
    #ifdef USES_LIGHTMAP
 
@@ -745,7 +752,7 @@ float4 CalculateFinalColor( VS_OUTPUT IN, LIGHT_OUTPUT L, float alpha )
 
    #endif
 
-   float4 color = float4( ( L.NonAmbientColor + L.AmbientColor ) * colorMultiplier, max(alpha, 0.0f) * (1.0f - step(alpha, 0.0f)) );
+   float4 color = float4( ( L.NonAmbientColor + L.AmbientColor ) * colorMultiplier, alpha );
 
    #ifdef USES_SHADERCOLORSCALE
 
@@ -768,6 +775,11 @@ float4 CalculateFinalColor( VS_OUTPUT IN, LIGHT_OUTPUT L, float alpha )
    return color;
 }
 
+float4 CalculateFinalColor( VS_OUTPUT IN, LIGHT_OUTPUT L, float alpha )
+{
+   return ComposeFinalColor( IN, L, (1.0f - step(alpha, 0.0f)) * max( alpha, L.Alpha ) );
+}
+
 float4 CalculateFinalColor( VS_OUTPUT IN, float4 color )
 {
    LIGHT_OUTPUT L;
@@ -775,7 +787,7 @@ float4 CalculateFinalColor( VS_OUTPUT IN, float4 color )
    L.NonAmbientColor = 0;
    L.AmbientColor    = color.rgb;
 
-   return CalculateFinalColor( IN, L, color.a );
+   return ComposeFinalColor( IN, L, max(color.a, 0) * (1.0f - step(color.a, 0.0f)) );
 }
 
 float4 CalculateFinalColor( VS_OUTPUT IN, float3 color, float alpha )
@@ -785,5 +797,5 @@ float4 CalculateFinalColor( VS_OUTPUT IN, float3 color, float alpha )
    L.NonAmbientColor = 0;
    L.AmbientColor    = color;
 
-   return CalculateFinalColor( IN, L, alpha );
+   return ComposeFinalColor( IN, L, max(alpha, 0) * (1.0f - step(alpha, 0.0f)) );
 }

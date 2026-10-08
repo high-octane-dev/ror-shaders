@@ -29,28 +29,17 @@ VS_OUTPUT vs_main( VS_INPUT IN )
 
 float4 ps_main( VS_OUTPUT IN ) : COLOR
 {
-   float alpha = tex2D( TexMap0, IN.TexCoord0 ).a * PS_BlurAmount;
-   
-   float start  = 1.0;
-   float finish = 1.0 / 8.0;
-   float range  = finish - start;
-   float step   = range / 4.0;
-   float total  = ( start - step * 0 ) + ( start - step * 1 ) + ( start - step * 2 ) + ( start - step * 3 ) + ( start - step * 4 ) + ( start - step * 5 ) + ( start - step * 6 );
-   /*
+   float depth = tex2D( TexMap6, IN.TexCoord0 ).r;
+   float blur  = smoothstep( 0.0001, 0.05, depth );
+
    float3 texDiffuse0 =
-      tex2D( TexMap1, IN.TexCoord1 ) * ( ( start - step * 0 ) / total ) +
-      tex2D( TexMap2, IN.TexCoord2 ) * ( ( start - step * 1 ) / total ) +
-      tex2D( TexMap3, IN.TexCoord3 ) * ( ( start - step * 2 ) / total ) +
-      tex2D( TexMap4, IN.TexCoord4 ) * ( ( start - step * 3 ) / total ) +
-      tex2D( TexMap5, IN.TexCoord5 ) * ( ( start - step * 4 ) / total ) +
-      tex2D( TexMap6, IN.TexCoord6 ) * ( ( start - step * 5 ) / total ) +
-      tex2D( TexMap7, IN.TexCoord7 ) * ( ( start - step * 6 ) / total );
-   */
-      float3 texDiffuse0 =
-      tex2D( TexMap1, IN.TexCoord1 ) * ( ( start - step * 0 ) / total ) +
-      tex2D( TexMap2, IN.TexCoord2 ) * ( ( start - step * 1 ) / total ) +
-      tex2D( TexMap3, IN.TexCoord3 ) * ( ( start - step * 2 ) / total ) +
-      tex2D( TexMap4, IN.TexCoord4 ) * ( ( start - step * 3 ) / total ) +
-      tex2D( TexMap5, IN.TexCoord5 ) * ( ( start - step * 4 ) / total );
-   return float4( texDiffuse0, alpha );
+      tex2D( TexMap1, IN.TexCoord0 + IN.TexCoord1 * blur ) +
+      tex2D( TexMap2, IN.TexCoord0 + IN.TexCoord2 * blur ) +
+      tex2D( TexMap3, IN.TexCoord0 + IN.TexCoord3 * blur ) +
+      tex2D( TexMap4, IN.TexCoord0 + IN.TexCoord4 * blur ) +
+      tex2D( TexMap5, IN.TexCoord0 + IN.TexCoord5 * blur );
+
+   float alpha = tex2D( TexMap0, IN.TexCoord0 ).g * PS_BlurAmount;
+
+   return float4( texDiffuse0 * 0.21, alpha );
 }

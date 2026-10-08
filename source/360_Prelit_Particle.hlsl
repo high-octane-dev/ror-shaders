@@ -49,10 +49,12 @@ float4 ps_main( VS_OUTPUT IN ) : COLOR
 {
    float4 texDiffuse0 = tex2D( TexMap0, IN.TexCoord0 );
    
+   // IN.Color.rgb holds the particle's billboard normal ( see vs_main )
    LIGHT_OUTPUT L;
 
-   L.NonAmbientColor = texDiffuse0.rgb * 1.25;
-   L.AmbientColor    = texDiffuse0.rgb * 0.75;
+   L.NonAmbientColor = texDiffuse0.rgb * 1.95 * ( PS_AmbientColor * 0.65 + PS_SunlightColor * ( 0.20 + saturate( dot( IN.Color.rgb, PS_SunlightDirection ) ) * 1.55 ) );
+   L.AmbientColor    = texDiffuse0.rgb * 0.95;
+   L.Alpha           = 0;
 
    return CalculateFinalColor( IN, L, texDiffuse0.a * IN.Color.a );
 }

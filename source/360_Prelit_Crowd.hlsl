@@ -49,6 +49,7 @@ float4 ps_main( VS_OUTPUT IN ) : COLOR
 
    L.NonAmbientColor = color;
    L.AmbientColor    = 0;
+   L.Alpha           = 0;
 
    return CalculateFinalColor( IN, L, alpha );
 }

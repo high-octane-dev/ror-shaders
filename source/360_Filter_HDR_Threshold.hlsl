@@ -18,14 +18,7 @@ float4 ps_main( VS_OUTPUT IN ) : COLOR
 {
    float3 texDiffuse0 = tex2D( TexMap0, IN.TexCoord0 );
    
-   float luminance = max( max( texDiffuse0.r, texDiffuse0.g ), texDiffuse0.b );
+   float luminance = dot( texDiffuse0, float3( 0.2125, 0.7154, 0.0721 ) );
    
-   if ( luminance >= 0.25 )
-   {
-      return float4( texDiffuse0, 1 );
-   }
-   else
-   {
-      return float4( 0, 0, 0, 1 );
-   }
+   return float4( texDiffuse0 * max( luminance - PS_HDR_Threshold, 0 ) * 2, 1 );
 }

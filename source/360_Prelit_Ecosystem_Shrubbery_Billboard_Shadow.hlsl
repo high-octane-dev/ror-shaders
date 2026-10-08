@@ -35,6 +35,7 @@ float4 ps_main( VS_OUTPUT IN ) : COLOR
    
    L.NonAmbientColor = texDiffuse0 * IN.Color;
    L.AmbientColor    = texDiffuse0 * PS_AmbientColor;
+   L.Alpha           = 0;
    
    return CalculateFinalColor( IN, L, texDiffuse0.a * IN.Color.a );
 }

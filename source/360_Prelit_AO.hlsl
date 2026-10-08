@@ -17,9 +17,7 @@ float4 ps_main( VS_OUTPUT IN ) : COLOR
 {
    float4 texDiffuse0 = tex2D( TexMap0, IN.TexCoord0 );
    float4 texAO = tex2D( TexMap1, IN.TexCoord1 );
-   float4 texBlend = 0.25f * (texDiffuse0.rgba * texAO.brga);
-   
-   float4 color = texBlend * IN.Color;
+   float4 color = texDiffuse0 * texAO * IN.Color;
    
    return CalculateFinalColor( IN, color );
 }

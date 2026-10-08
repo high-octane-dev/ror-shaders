@@ -17,17 +17,9 @@ VS_OUTPUT vs_main( VS_INPUT IN )
 float4 ps_main( VS_OUTPUT IN ) : COLOR
 {
    float3 frameBuffer = tex2D( TexMap0, IN.TexCoord0 * PS_HDR_UVOffset.zw + PS_HDR_UVOffset.xy );
-
-   float luminance = max( max( frameBuffer.r, frameBuffer.g ), frameBuffer.b );
-   
-   if ( luminance < 0.25 )
-   {
-      frameBuffer += saturate( frameBuffer - PS_HDR_Threshold.x ) * PS_HDR_Mix.y;
-   }
-   
-   float3 glow = tex2D( TexMap1, IN.TexCoord0 ) * PS_HDR_Mix.x;
-   
-   float3 final = max( frameBuffer, glow );
-   
+   float3 glow = tex2D( TexMap1, IN.TexCoord0 );
+   float3 color = frameBuffer + glow * PS_HDR_Mix.x;
+   float exposure = max( PS_HDR_Mix.y / PS_HDR_Mix.z, 1.0 ) - 1.0;
+   float3 final = color + ( 1.0 - exp( -color * exposure ) );
    return float4( final, 1 );
 }

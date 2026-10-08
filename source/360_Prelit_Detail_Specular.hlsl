@@ -34,5 +34,9 @@ float4 ps_main( VS_OUTPUT IN ) : COLOR
    L.WantReflection     = 0;
    L.WantFresnel        = 0;
    
-   return CalculateFinalColor( IN, CalculateLighting( L ), IN.Color.a );
+   LIGHT_OUTPUT O = CalculateLighting( L );
+
+   O.NonAmbientColor *= IN.Color;
+
+   return CalculateFinalColor( IN, O, IN.Color.a );
 }
