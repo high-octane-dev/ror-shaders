@@ -20,8 +20,8 @@ VS_OUTPUT vs_main( VS_INPUT IN )
 float4 ps_main( VS_OUTPUT IN ) : COLOR
 {
    float3 texGloss0   = tex2D( TexMap1, IN.TexCoord0 );
-   float2 texBump0    = tex2D( TexMap2, IN.TexGen1   ) * float2( 2, 2 ) - float2( 1, 1 );
-   float2 texBump1    = tex2D( TexMap3, IN.TexGen2   ) * float2( 2, 2 ) - float2( 1, 1 );
+   float3 texBump0    = tex2D( TexMap2, IN.TexGen1   ) * float3( 2, 2, 2 ) - float3( 1, 1, 1 );
+   float3 texBump1    = tex2D( TexMap3, IN.TexGen2   ) * float3( 2, 2, 2 ) - float3( 1, 1, 1 );
    
    LIGHT_INPUT L;
    

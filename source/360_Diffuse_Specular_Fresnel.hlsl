@@ -1,4 +1,5 @@
 
+#define USES_MUD
 #define USES_TEXCOORD0
 #define USES_WORLDPOSITION
 #define USES_WORLDNORMAL
@@ -20,12 +21,6 @@ float4 ps_main( VS_OUTPUT IN ) : COLOR
    float4 texGloss0   = tex2D( TexMap1, IN.TexCoord0 );
 
    float mudCoverage = saturate( texGloss0.a + PS_MudLevel );
-   mudCoverage = mudCoverage * mudCoverage; 
-   
-   float3 mudColor = float3( 0.88f, 0.74f, 0.56f );
-   
-   texDiffuse0.rgb = lerp( texDiffuse0.rgb, mudColor, mudCoverage );
-   texGloss0.rgb = lerp( texGloss0.rgb, float3(0, 0, 0), mudCoverage );
 
    LIGHT_INPUT L;
    
@@ -33,9 +28,10 @@ float4 ps_main( VS_OUTPUT IN ) : COLOR
    L.WorldNormal        = IN.WorldNormal;
    L.VertexColor        = 0;
    L.TexDiffuse0        = texDiffuse0.rgb;
-   L.GlossPower         = texGloss0.r;
+   L.GlossPower         = texGloss0.r * ( mudCoverage * mudCoverage ) * ( mudCoverage * mudCoverage );
    L.GlossLevel         = texGloss0.g;
    L.ReflectionLevel    = texGloss0.b;
+   L.MudLevel           = mudCoverage;
    L.WantAmbient        = 1;
    L.WantDiffuse        = 1;
    L.WantSpecular       = 1;

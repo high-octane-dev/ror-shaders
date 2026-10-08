@@ -344,13 +344,13 @@ struct VS_OUTPUT
 
 #ifdef USES_BUMP
 
-   float3 CalculateBumpedNormal( VS_OUTPUT IN, float2 texBump )
+   float3 CalculateBumpedNormal( VS_OUTPUT IN, float3 texBump )
    {
       float3 unitWorldNormal   = normalize( IN.WorldNormal   );
       float3 unitWorldTangent  = normalize( IN.WorldTangent  );
       float3 unitWorldBinormal = normalize( IN.WorldBinormal );
       
-      return unitWorldNormal + texBump.r * unitWorldTangent + texBump.g * unitWorldBinormal;
+      return texBump.r * unitWorldTangent + texBump.g * unitWorldBinormal + texBump.b * unitWorldNormal;
    }
 
 #endif
@@ -530,6 +530,13 @@ struct LIGHT_INPUT
    float    GlossPower;
    float    GlossLevel;
    float    ReflectionLevel;
+
+   #ifdef USES_MUD
+
+   float    MudLevel;
+
+   #endif
+
    bool     WantAmbient;
    bool     WantDiffuse;
    bool     WantSpecular;
@@ -565,11 +572,19 @@ LIGHT_OUTPUT CalculateLighting( LIGHT_INPUT IN )
 
    #ifdef USES_TWOTONE
 
-   float3 texDiffuse = lerp( IN.TexDiffuse0, IN.TexDiffuse1, viewAngle * 0.50 );
+   float3 texDiffuse = lerp( IN.TexDiffuse0, IN.TexDiffuse1, saturate( 1 - dot( eyeVector, IN.WorldNormal ) ) * 0.50 );
 
    #else
 
    float3 texDiffuse = IN.TexDiffuse0;
+
+   #endif
+
+   #ifdef USES_MUD
+
+   texDiffuse = lerp( float3( 0.88f, 0.74f, 0.56f ), texDiffuse, IN.MudLevel );
+
+   IN.MudLevel = IN.MudLevel * IN.MudLevel;
 
    #endif
 
@@ -595,9 +610,15 @@ LIGHT_OUTPUT CalculateLighting( LIGHT_INPUT IN )
 
       float3 specularContribution = pow( max( dot( refVector, eyeVector ), 0 ), max( IN.GlossPower, 0.01 ) * PS_GlossPower + 1.0 ) * IN.GlossLevel * ( PS_SunlightColor + PS_AmbientColor );
 
-      OUT.NonAmbientColor += specularContribution;
-
       OUT.Alpha = saturate( dot( specularContribution, 0.35 ) );
+
+      #ifdef USES_MUD
+
+      specularContribution *= max( IN.MudLevel, 0.4 );
+
+      #endif
+
+      OUT.NonAmbientColor += specularContribution;
    }
 
    if ( IN.WantReflection )
@@ -618,11 +639,19 @@ LIGHT_OUTPUT CalculateLighting( LIGHT_INPUT IN )
 
       if ( IN.WantFresnel )
       {
-         float fresnel = saturate( pow( saturate( 1.0 - dot( eyeVector, IN.WorldNormal ) ), 4 ) + 0.45 );
+         float fresnel = saturate( pow( saturate( 1.0 - dot( eyeVector, IN.WorldNormal ) ), 4 ) + 1.0 - 0.55 );
 
-         OUT.Alpha = max( OUT.Alpha, IN.ReflectionLevel * 0.55 + IN.ReflectionLevel * fresnel );
+         float reflectionLevel = IN.ReflectionLevel * fresnel;
 
-         IN.ReflectionLevel = IN.ReflectionLevel * fresnel;
+         #ifdef USES_MUD
+
+         reflectionLevel *= IN.MudLevel;
+
+         #endif
+
+         OUT.Alpha = max( OUT.Alpha, IN.ReflectionLevel * 0.55 + reflectionLevel );
+
+         IN.ReflectionLevel = reflectionLevel;
       }
 
       OUT.AmbientColor += reflectionContribution * IN.ReflectionLevel;
@@ -703,60 +732,84 @@ float3 CalculateWorldShadowColor( float2 texCoord )
 
 #ifdef USES_DYNAMICSHADOWMAP
 
+float IsInsideShadowMap( float4 texShadow )
+{
+   float2 minimum = step( 0, texShadow.xy );
+   float2 maximum = step( texShadow.xy, texShadow.w );
+
+   return minimum.x * maximum.x * maximum.y * minimum.y;
+}
+
 float3 CalculateShadowColor( VS_OUTPUT IN, float3 surfaceColor )
 {
-   float surfaceAlpha = ( length( IN.TexShadow0.xy * 2.0 - 1.0 ) - 0.8 ) * 5.0;
+   float inside0 = IsInsideShadowMap( IN.TexShadow0 );
+   float inside1 = IsInsideShadowMap( IN.TexShadow1 );
+   float inside2 = IsInsideShadowMap( IN.TexShadow2 );
 
-   if ( surfaceAlpha >= 1.0 )
+   float cascade0 = inside0;
+   float cascade1 = saturate( inside1 - inside0 );
+   float cascade2 = saturate( saturate( inside2 - inside1 ) - inside0 );
+
+   float3 texShadow = IN.TexShadow0.xyz * cascade0 + IN.TexShadow1.xyz * cascade1 + IN.TexShadow2.xyz * cascade2;
+
+   float4 depths;
+   float  depth;
+
+   if ( cascade0 )
    {
-      return surfaceAlpha;
+      asm
+      {
+         tfetch2D depths.x___, texShadow.xy, TexMap8, OffsetX =  1, OffsetY =  1
+         tfetch2D depths._x__, texShadow.xy, TexMap8, OffsetX = -1, OffsetY =  1
+         tfetch2D depths.__x_, texShadow.xy, TexMap8, OffsetX =  1, OffsetY = -1
+         tfetch2D depths.___x, texShadow.xy, TexMap8, OffsetX = -1, OffsetY = -1
+      };
+
+      depth = tex2D( TexMap8, texShadow.xy ).r;
+   }
+   else if ( cascade1 )
+   {
+      asm
+      {
+         tfetch2D depths.x___, texShadow.xy, TexMap9, OffsetX =  0.5, OffsetY =  0.5
+         tfetch2D depths._x__, texShadow.xy, TexMap9, OffsetX = -0.5, OffsetY =  0.5
+         tfetch2D depths.__x_, texShadow.xy, TexMap9, OffsetX =  0.5, OffsetY = -0.5
+         tfetch2D depths.___x, texShadow.xy, TexMap9, OffsetX = -0.5, OffsetY = -0.5
+      };
+
+      depth = tex2D( TexMap9, texShadow.xy ).r;
    }
    else
    {
-      float offset = 1.0 / 1344.0;
+      asm
+      {
+         tfetch2D depths.x___, texShadow.xy, TexMap10, OffsetX =  0.5, OffsetY =  0.5
+         tfetch2D depths._x__, texShadow.xy, TexMap10, OffsetX = -0.5, OffsetY =  0.5
+         tfetch2D depths.__x_, texShadow.xy, TexMap10, OffsetX =  0.5, OffsetY = -0.5
+         tfetch2D depths.___x, texShadow.xy, TexMap10, OffsetX = -0.5, OffsetY = -0.5
+      };
 
-      float depth1 = tex2D( TexMap8,  IN.TexShadow0 + float2(     0.0,  offset ) ).r;
-      float depth2 = tex2D( TexMap9,  IN.TexShadow0 + float2( -offset,     0.0 ) ).r;
-      float depth3 = tex2D( TexMap10, IN.TexShadow0 + float2(     0.0,     0.0 ) ).r;
-      float depth4 = tex2D( TexMap11, IN.TexShadow0 + float2(  offset,     0.0 ) ).r;
-      float depth5 = tex2D( TexMap12, IN.TexShadow0 + float2(     0.0, -offset ) ).r;
-
-      float alpha1 = step( IN.TexShadow0.z, depth1 );
-      float alpha2 = step( IN.TexShadow0.z, depth2 );
-      float alpha3 = step( IN.TexShadow0.z, depth3 );
-      float alpha4 = step( IN.TexShadow0.z, depth4 );
-      float alpha5 = step( IN.TexShadow0.z, depth5 );
-
-      float3 shadowColor = lerp( surfaceColor, PS_ShadowColor, ( alpha1 + alpha2 + alpha3 + alpha4 + alpha5 ) * 0.20 );
-
-      return lerp( shadowColor, surfaceColor, saturate( surfaceAlpha ) );
+      depth = tex2D( TexMap10, texShadow.xy ).r;
    }
+
+   float shadowAmount = dot( step( texShadow.z, depths ), 0.20 ) + step( texShadow.z, depth ) * 0.20;
+
+   return lerp( surfaceColor, PS_ShadowColor, shadowAmount * ( cascade0 + cascade1 + cascade2 ) );
 }
 
 #endif
 
 float4 ComposeFinalColor( VS_OUTPUT IN, LIGHT_OUTPUT L, float alpha )
 {
-   #ifdef USES_LIGHTMAP
-
-      float3 texLightmap = tex2D( TexMap6, IN.TexCoord2 );
-
-      #ifdef USES_DYNAMICSHADOWMAP
-
-      float3 shadowColor = CalculateShadowColor( IN, texLightmap );
-
-      texLightmap = min( texLightmap, shadowColor );
-
-      #endif
-
-      L.AmbientColor    *= texLightmap;
-      L.NonAmbientColor *= saturate( texLightmap.g * 8.0f - 4.0f );
-
-   #endif
-
    #ifdef USES_WORLDSHADOWMAP
 
       float3 texShadowmap = CalculateWorldShadowColor( IN.TexCoord2 );
+
+      #ifdef USES_DYNAMICSHADOWMAP
+
+      texShadowmap = CalculateShadowColor( IN, texShadowmap );
+
+      #endif
 
       #ifdef USES_ECOSYSTEM
 

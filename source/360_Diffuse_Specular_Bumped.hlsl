@@ -16,7 +16,7 @@ float4 ps_main( VS_OUTPUT IN ) : COLOR
 {
    float4 texDiffuse0 = tex2D( TexMap0, IN.TexCoord0 );
    float3 texGloss0   = tex2D( TexMap1, IN.TexCoord0 );
-   float2 texBump0    = tex2D( TexMap2, IN.TexCoord0 ) * float2( 2, 2 ) - float2( 1, 1 );
+   float3 texBump0    = tex2D( TexMap2, IN.TexCoord0 ) * float3( 2, 2, 2 ) - float3( 1, 1, 1 );
    
    LIGHT_INPUT L;
    
