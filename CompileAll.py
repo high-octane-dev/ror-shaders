@@ -48,7 +48,7 @@ for i in range(len(files)):
             
         compiler = "fxc-xbox-8276"
         vertex_result = subprocess.run(compiler + " /XOautoz /Tvs_3_0 /Evs_main /Fo" + vsh_file + " " + source_path, shell=True, capture_output=True)
-        pixel_result = subprocess.run(compiler + " /Tps_3_0 /Eps_main /Fo" + psh_file + " " + source_path, shell=True, capture_output=True)
+        pixel_result = subprocess.run(compiler + " /Xbe:2- /Tps_3_0 /Eps_main /Fo" + psh_file + " " + source_path, shell=True, capture_output=True)
     
         if vertex_result.returncode != 0 and pixel_result.returncode != 0:
             print("Failed to compile shader: " + file)

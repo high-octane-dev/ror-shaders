@@ -16,6 +16,8 @@ The reason why this project exists is so that these shaders can later be refacto
 - asm/reference/   # Dissasembly output for the originial games' shaders in target/.
 - CompileAll.py    # Script to automatically compile all shaders in the source/ folder and output them to the compiled/ folder.
 - Verify.py        # Script to automatically identify matched shaders and dump dissassembly output to asm/generated/ and asm/reference/ as needed.
+- CompileSingle.py # Script to compile a shader in the source/ folder and output it to the compiled/ folder.
+- VerifySingle.py  # Script to check if a given shader is matched, dump dissassembly output to asm/generated/ and asm/reference/ if needed.
 ```
 
 # Workflow
@@ -24,7 +26,7 @@ To decompile a shader, a specific `.vsh`/`.psh` file is chosen from the `target`
 - 1. Run `Verify.py` to gauge current progress and find a shader to decompile that isn't missing.
 - 2. Find that shader's `.hlsl` file in `source/`, and the target assembly in `asm/reference/`.
 - 3. Analyze the reference assembly and recover the original logic, then transplant it into the `.hlsl` file.
-- 4. Run `CompileAll.py`, or manually compile the shader with `fxc-xbox-8276` (with the proper arguments as outlined in `CompileAll.py`), then run `Verify.py` to check the results.
+- 4. Run `CompileSingle.py` on the source file, then run `VerifySingle.py` to check the results.
 - 5. If the shader is now matched, you're done. If not, check the generated assembly in `asm/generated/` and compare it against the target `asm/reference/`, permute the `.hlsl` source again, and repeat steps 3-5 until the shader is matched.
 
 ### Requirements

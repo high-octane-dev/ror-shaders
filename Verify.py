@@ -52,10 +52,7 @@ for name in files:
         print("Failed to compute hashes for shader: " + name)
 
 for name in failed_matches:
-    if name.endswith(".vsh"):
-        print("Failed to match: " + name + "! (" + str(os.path.getsize(TARGET_HASH_DIR + name)) + "B)")
-    else:
-        print("Failed to match: " + name + "!")
+    print(f"Failed to match: {name}! (Target: {os.path.getsize(TARGET_HASH_DIR + name)} / Source: {os.path.getsize(SOURCE_CHECK_DIR + name)} / Diff: {os.path.getsize(SOURCE_CHECK_DIR + name) - os.path.getsize(TARGET_HASH_DIR + name)})")
 for name in missing_shaders:
     print("Missing shader: " + name + "!")
 

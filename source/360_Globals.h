@@ -188,7 +188,7 @@ struct VS_INPUT
 
    #ifdef USES_PARTICLE
 
-      float3 Data          : TEXCOORD1;
+      float4 Data          : TEXCOORD1;
 
    #endif
 
@@ -575,8 +575,13 @@ LIGHT_OUTPUT CalculateLighting( LIGHT_INPUT IN )
 
    if ( IN.WantDiffuse )
    {
+      float3 hemisphericAmbient = lerp( PS_ShadowColor, PS_AmbientColor, IN.WorldNormal.y * 0.5 + 0.5 );
+      
+      float negDot = saturate( -dot( IN.WorldNormal, PS_SunlightDirection ) );
+      float ambientShadow = 1.0 - 0.5 * (negDot * negDot);
+
       OUT.NonAmbientColor  = texDiffuse * PS_SunlightColor * diffuseContribution;
-      OUT.AmbientColor     = texDiffuse * PS_AmbientColor;
+      OUT.AmbientColor     = texDiffuse * hemisphericAmbient * ambientShadow;
    }
    else
    {
@@ -740,7 +745,7 @@ float4 CalculateFinalColor( VS_OUTPUT IN, LIGHT_OUTPUT L, float alpha )
 
    #endif
 
-   float4 color = float4( ( L.NonAmbientColor + L.AmbientColor ) * colorMultiplier, alpha );
+   float4 color = float4( ( L.NonAmbientColor + L.AmbientColor ) * colorMultiplier, max(alpha, 0.0f) * (1.0f - step(alpha, 0.0f)) );
 
    #ifdef USES_SHADERCOLORSCALE
 
