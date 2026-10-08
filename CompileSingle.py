@@ -36,7 +36,7 @@ current_hash = get_file_hash(source_path)
 if (file in cache and cache[file] == current_hash and
     os.path.exists(vsh_file) and os.path.exists(psh_file)):
     print("Skipped unchanged shader: " + file)
-    # sys.exit(0)
+    sys.exit(0)
 
 compiler = "fxc-xbox-8276"
 vertex_result = subprocess.run(compiler + " /XOautoz /Tvs_3_0 /Evs_main /Fo" + vsh_file + " " + source_path, shell=True, capture_output=True)

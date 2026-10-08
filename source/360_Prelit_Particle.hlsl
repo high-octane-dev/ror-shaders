@@ -7,6 +7,8 @@
 
 #include "360_Globals.h"
 
+static const float2 ParticleCorners[ 4 ] = { { -1, -1 }, { 1, -1 }, { 1, 1 }, { -1, 1 } };
+
 VS_OUTPUT vs_main( VS_INPUT IN )
 {
    VS_OUTPUT OUT;
@@ -15,11 +17,28 @@ VS_OUTPUT vs_main( VS_INPUT IN )
    
    float maxScale = fog.Distance * 0.20;
 
-   float4 worldPosition = IN.Position * min( IN.Data.y, maxScale );
-   // float4 worldPosition = IN.Position + VS_ParticleDeltaVectors[ IN.Data.x ] * min( IN.Data.y, maxScale );
+   float2 corner = ParticleCorners[ IN.Data.x ];
+
+   float s, c;
+   sincos( IN.Data.w, s, c );
+
+   float3 right   = VS_WorldViewMatrix[ 0 ].xyz;
+   float3 up      = VS_WorldViewMatrix[ 1 ].xyz;
+   float3 forward = VS_WorldViewMatrix[ 2 ].xyz;
+
+   float3 axisX = s * up + c * right;
+   float3 axisY = -c * up + s * right;
+
+   float3 offset = mul( corner, float2x3( axisX, axisY ) );
+
+   float4 worldPosition = IN.Position;
+   worldPosition.xyz += offset * min( IN.Data.y, maxScale );
+
+   // normalize( float3( 1, 1, 0.25 ) ) == ( 0.69631058, 0.69631058, 0.17407765 )
+   float3 normal = mul( float3( corner.yx * 0.69631058, 0.17407765 ), float3x3( axisY, axisX, forward ) );
    
    OUT.Position      = mul( worldPosition, VS_WorldViewProjMatrix );
-   OUT.Color         = float4( 1, 1, 1, saturate( IN.Data.z ) );
+   OUT.Color         = float4( normalize( normal ), saturate( IN.Data.z ) );
    OUT.TexCoord0     = IN.TexCoord0;
    OUT.Fog           = fog.Fog;
    
