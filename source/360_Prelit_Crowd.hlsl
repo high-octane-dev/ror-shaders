@@ -8,6 +8,10 @@
 
 #include "360_Globals.h"
 
+float3   VS_CrowdVectorX               : register( c56 );
+float3   VS_CrowdVectorY               : register( c57 );
+float    VS_CrowdOffsetU               : register( c58 );
+
 VS_OUTPUT vs_main( VS_INPUT IN )
 {
    VS_OUTPUT OUT;

@@ -46,14 +46,10 @@ float4   VS_ShrubberyOffset            : register( c45 );
 float2   VS_ShrubberyRange             : register( c46 );
 
 float4   VS_ClampFarZ                  : register( c47 );
-// float4   VS_ParticleDeltaVectors[ 4 ]  : register( c47 );
-// float3   VS_ParticleColor[ 4 ]         : register( c51 );
+float4   VS_ParticleDeltaVectors[ 4 ]  : register( c47 );
+float3   VS_ParticleColor[ 4 ]         : register( c51 );
 
 float4   VS_WorldShadowMapRegion       : register( c55 );
-
-float3   VS_CrowdVectorX               : register( c56 );
-float3   VS_CrowdVectorY               : register( c57 );
-float    VS_CrowdOffsetU               : register( c58 );
 
 float4x3 VS_BoneMatrixStart[ 63 ]      : register( c63 );
 
@@ -81,6 +77,7 @@ float2   PS_EnvMapScale                : register( c12 );
 float2   PS_EnvMapOffset               : register( c13 );
 float4   PS_InverseDepthProjection     : register( c14 );
 float2   PS_DistanceFadeMinMax         : register( c15 );
+float4   PS_WorldShadowMapUVOffset     : register( c15 );
 float    PS_GlossPower                 : register( c98 );
 float3   PS_ShadowColor                : register( c99 );
 float    PS_MudLevel                   : register( c100 );
@@ -672,6 +669,38 @@ LIGHT_OUTPUT CalculateBlendColor( LIGHT_OUTPUT from, LIGHT_OUTPUT to, float4 ver
    return L;
 }
 
+#ifdef USES_WORLDSHADOWMAP
+
+float3 CalculateWorldShadowColor( float2 texCoord )
+{
+   float2 gridCoord = texCoord * 3;
+   float2 cell      = trunc( gridCoord );
+   float2 cellCoord = gridCoord - cell;
+
+   float2 quadrant  = step( 0.5, cellCoord );
+
+   cellCoord = cellCoord - quadrant * 0.5;
+
+   float  edgeFade = saturate( ( length( texCoord * 2 - 1 ) - 0.99 ) * 100 );
+   float2 cellMask = 1 - saturate( abs( floor( PS_WorldShadowMapUVOffset.z - float2( cell.x, cell.y + 3 ) ) ) );
+
+   float2 shadowCoord = ( cell + ( cellCoord * 2 + 1.0 / 512.0 ) * ( 256.0 / 257.0 ) ) / 3 + PS_WorldShadowMapUVOffset.xy;
+
+   shadowCoord.y = 1 - shadowCoord.y;
+
+   float4 texShadow = tex2D( TexMap7, shadowCoord );
+
+   float shadow = dot( texShadow * float4( 1 - quadrant.x, quadrant.x, 1 - quadrant.x, quadrant.x ), float4( quadrant.y, quadrant.y, 1 - quadrant.y, 1 - quadrant.y ) );
+
+   shadow = smoothstep( 0.2, 3.0 - dot( PS_ShadowColor, 0.66 ), shadow );
+
+   float2 shadows = cellMask * PS_WorldShadowMapUVOffset.w + edgeFade + shadow;
+
+   return saturate( max( shadows.x, shadows.y ) + PS_ShadowColor );
+}
+
+#endif
+
 #ifdef USES_DYNAMICSHADOWMAP
 
 float3 CalculateShadowColor( VS_OUTPUT IN, float3 surfaceColor )
@@ -727,7 +756,7 @@ float4 ComposeFinalColor( VS_OUTPUT IN, LIGHT_OUTPUT L, float alpha )
 
    #ifdef USES_WORLDSHADOWMAP
 
-      float3 texShadowmap = tex2D( TexMap7, IN.TexCoord2 );
+      float3 texShadowmap = CalculateWorldShadowColor( IN.TexCoord2 );
 
       #ifdef USES_ECOSYSTEM
 
@@ -737,6 +766,7 @@ float4 ComposeFinalColor( VS_OUTPUT IN, LIGHT_OUTPUT L, float alpha )
       #else
 
       L.NonAmbientColor *= texShadowmap;
+      L.AmbientColor    *= texShadowmap;
 
       #endif
 
