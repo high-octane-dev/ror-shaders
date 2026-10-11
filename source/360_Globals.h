@@ -710,7 +710,6 @@ float3 CalculateWorldShadowColor( float2 texCoord )
 
    cellCoord = cellCoord - quadrant * 0.5;
 
-   float  edgeFade = saturate( ( length( texCoord * 2 - 1 ) - 0.99 ) * 100 );
    float2 cellMask = 1 - saturate( abs( floor( PS_WorldShadowMapUVOffset.z - float2( cell.x, cell.y + 3 ) ) ) );
 
    float2 shadowCoord = ( cell + ( cellCoord * 2 + 1.0 / 512.0 ) * ( 256.0 / 257.0 ) ) / 3 + PS_WorldShadowMapUVOffset.xy;
@@ -722,6 +721,8 @@ float3 CalculateWorldShadowColor( float2 texCoord )
    float shadow = dot( texShadow * float4( 1 - quadrant.x, quadrant.x, 1 - quadrant.x, quadrant.x ), float4( quadrant.y, quadrant.y, 1 - quadrant.y, 1 - quadrant.y ) );
 
    shadow = smoothstep( 0.2, 3.0 - dot( PS_ShadowColor, 0.66 ), shadow );
+
+   float  edgeFade = saturate( ( length( texCoord * 2 - 1 ) - 0.99 ) * 100 );
 
    float2 shadows = cellMask * PS_WorldShadowMapUVOffset.w + edgeFade + shadow;
 
@@ -735,7 +736,7 @@ float3 CalculateWorldShadowColor( float2 texCoord )
 float IsInsideShadowMap( float4 texShadow )
 {
    float2 minimum = step( 0, texShadow.xy );
-   float2 maximum = step( texShadow.xy, texShadow.w );
+   float2 maximum = step( texShadow.yx, texShadow.w );
 
    return minimum.x * maximum.x * maximum.y * minimum.y;
 }
@@ -745,10 +746,10 @@ float3 CalculateShadowColor( VS_OUTPUT IN, float3 surfaceColor )
    float inside0 = IsInsideShadowMap( IN.TexShadow0 );
    float inside1 = IsInsideShadowMap( IN.TexShadow1 );
    float inside2 = IsInsideShadowMap( IN.TexShadow2 );
-
    float cascade0 = inside0;
-   float cascade1 = saturate( inside1 - inside0 );
    float cascade2 = saturate( saturate( inside2 - inside1 ) - inside0 );
+   float cascade1 = saturate( inside1 - inside0 );
+
 
    float3 texShadow = IN.TexShadow0.xyz * cascade0 + IN.TexShadow1.xyz * cascade1 + IN.TexShadow2.xyz * cascade2;
 
@@ -767,7 +768,7 @@ float3 CalculateShadowColor( VS_OUTPUT IN, float3 surfaceColor )
 
       depth = tex2D( TexMap8, texShadow.xy ).r;
    }
-   else if ( cascade1 )
+   else if ( cascade1 != 0 )
    {
       asm
       {
@@ -799,7 +800,7 @@ float3 CalculateShadowColor( VS_OUTPUT IN, float3 surfaceColor )
 
 #endif
 
-float4 ComposeFinalColor( VS_OUTPUT IN, LIGHT_OUTPUT L, float alpha )
+float4 CalculateFinalColor( VS_OUTPUT IN, LIGHT_OUTPUT L, float alpha )
 {
    #ifdef USES_WORLDSHADOWMAP
 
@@ -835,7 +836,7 @@ float4 ComposeFinalColor( VS_OUTPUT IN, LIGHT_OUTPUT L, float alpha )
 
    #endif
 
-   float4 color = float4( ( L.NonAmbientColor + L.AmbientColor ) * colorMultiplier, alpha );
+   float4 color = float4( ( L.NonAmbientColor + L.AmbientColor ) * colorMultiplier, (1.0f - step(alpha, 0.0f)) * max( alpha, L.Alpha ) );
 
    #ifdef USES_SHADERCOLORSCALE
 
@@ -858,27 +859,120 @@ float4 ComposeFinalColor( VS_OUTPUT IN, LIGHT_OUTPUT L, float alpha )
    return color;
 }
 
-float4 CalculateFinalColor( VS_OUTPUT IN, LIGHT_OUTPUT L, float alpha )
+float4 CalculateFinalColor( VS_OUTPUT IN, float4 surface )
 {
-   return ComposeFinalColor( IN, L, (1.0f - step(alpha, 0.0f)) * max( alpha, L.Alpha ) );
+   #ifdef USES_HDR
+
+      float colorMultiplier = 1.00;
+
+   #else
+
+      float colorMultiplier = 0.25;
+
+   #endif
+
+   #ifdef USES_WORLDSHADOWMAP
+
+      float3 texShadowmap = CalculateWorldShadowColor( IN.TexCoord2 );
+
+      #ifdef USES_DYNAMICSHADOWMAP
+
+      texShadowmap = CalculateShadowColor( IN, texShadowmap );
+
+      #endif
+
+      // The surface color is applied after the color scales (see below).
+
+      float4 color = float4( texShadowmap * colorMultiplier, max(surface.a, 0) * (1.0f - step(surface.a, 0.0f)) );
+
+   #else
+
+      float4 color = float4( surface.rgb * colorMultiplier, max(surface.a, 0) * (1.0f - step(surface.a, 0.0f)) );
+
+   #endif
+
+   #ifdef USES_SHADERCOLORSCALE
+
+      color = color * PS_ShaderColorScale;
+
+   #endif
+
+   #ifdef USES_OBJECTCOLORSCALE
+
+      color = color * PS_ObjectColorScale;
+
+   #endif
+
+   #ifdef USES_WORLDSHADOWMAP
+
+      color.rgb *= surface.rgb;
+
+   #endif
+
+   #ifdef USES_FOG
+
+      color = float4( lerp( PS_FogColor, color, IN.Fog ).xyz, color.a );
+
+   #endif
+
+   return color;
 }
 
-float4 CalculateFinalColor( VS_OUTPUT IN, float4 color )
+float4 CalculateFinalColor( VS_OUTPUT IN, float3 surface, float alpha )
 {
-   LIGHT_OUTPUT L;
+   #ifdef USES_HDR
 
-   L.NonAmbientColor = 0;
-   L.AmbientColor    = color.rgb;
+      float colorMultiplier = 1.00;
 
-   return ComposeFinalColor( IN, L, max(color.a, 0) * (1.0f - step(color.a, 0.0f)) );
-}
+   #else
 
-float4 CalculateFinalColor( VS_OUTPUT IN, float3 color, float alpha )
-{
-   LIGHT_OUTPUT L;
+      float colorMultiplier = 0.25;
 
-   L.NonAmbientColor = 0;
-   L.AmbientColor    = color;
+   #endif
 
-   return ComposeFinalColor( IN, L, max(alpha, 0) * (1.0f - step(alpha, 0.0f)) );
+   #ifdef USES_WORLDSHADOWMAP
+
+      float3 texShadowmap = CalculateWorldShadowColor( IN.TexCoord2 );
+
+      #ifdef USES_DYNAMICSHADOWMAP
+
+      texShadowmap = CalculateShadowColor( IN, texShadowmap );
+
+      #endif
+
+      // The surface color is applied after the color scales (see below).
+
+      float4 color = float4( texShadowmap * colorMultiplier, max(alpha, 0) * (1.0f - step(alpha, 0.0f)) );
+
+   #else
+
+      float4 color = float4( surface * colorMultiplier, max(alpha, 0) * (1.0f - step(alpha, 0.0f)) );
+
+   #endif
+
+   #ifdef USES_SHADERCOLORSCALE
+
+      color = color * PS_ShaderColorScale;
+
+   #endif
+
+   #ifdef USES_OBJECTCOLORSCALE
+
+      color = color * PS_ObjectColorScale;
+
+   #endif
+
+   #ifdef USES_WORLDSHADOWMAP
+
+      color.rgb *= surface;
+
+   #endif
+
+   #ifdef USES_FOG
+
+      color = float4( lerp( PS_FogColor, color, IN.Fog ).xyz, color.a );
+
+   #endif
+
+   return color;
 }
