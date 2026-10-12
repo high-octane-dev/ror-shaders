@@ -735,10 +735,10 @@ float3 CalculateWorldShadowColor( float2 texCoord )
 
 float IsInsideShadowMap( float4 texShadow )
 {
+   float2 maximum = step( texShadow.xy, texShadow.w );
    float2 minimum = step( 0, texShadow.xy );
-   float2 maximum = step( texShadow.yx, texShadow.w );
 
-   return minimum.x * maximum.x * maximum.y * minimum.y;
+   return minimum.x * maximum.x * minimum.y * maximum.y;
 }
 
 float3 CalculateShadowColor( VS_OUTPUT IN, float3 surfaceColor )
