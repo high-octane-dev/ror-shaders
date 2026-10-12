@@ -5,8 +5,6 @@
 #define USES_TEXCOORD3
 #define USES_TEXCOORD4
 #define USES_TEXCOORD5
-// #define USES_TEXCOORD6
-// #define USES_TEXCOORD7
 
 #include "360_Globals.h"
 
