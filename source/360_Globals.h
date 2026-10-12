@@ -703,8 +703,8 @@ LIGHT_OUTPUT CalculateBlendColor( LIGHT_OUTPUT from, LIGHT_OUTPUT to, float4 ver
 float3 CalculateWorldShadowColor( float2 texCoord )
 {
    float2 gridCoord = texCoord * 3;
-   float2 cell      = trunc( gridCoord );
-   float2 cellCoord = gridCoord - cell;
+   float2 cell;
+   float2 cellCoord = modf( gridCoord, cell );
 
    float2 quadrant  = step( 0.5, cellCoord );
 
@@ -712,7 +712,7 @@ float3 CalculateWorldShadowColor( float2 texCoord )
 
    float2 cellMask = 1 - saturate( abs( floor( PS_WorldShadowMapUVOffset.z - float2( cell.x, cell.y + 3 ) ) ) );
 
-   float2 shadowCoord = ( cell + ( cellCoord * 2 + 1.0 / 512.0 ) * ( 256.0 / 257.0 ) ) / 3 + PS_WorldShadowMapUVOffset.xy;
+   float2 shadowCoord = ( cell + ( cellCoord + cellCoord + 1.0 / 512.0 ) * ( 256.0 / 257.0 ) ) / 3 + PS_WorldShadowMapUVOffset.xy;
 
    shadowCoord.y = 1.0 - shadowCoord.y;
 
