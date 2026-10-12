@@ -593,7 +593,7 @@ LIGHT_OUTPUT CalculateLighting( LIGHT_INPUT IN )
       float3 hemisphericAmbient = lerp( PS_ShadowColor, PS_AmbientColor, IN.WorldNormal.y * 0.5 + 0.5 );
       
       float negDot = saturate( -dot( IN.WorldNormal, PS_SunlightDirection ) );
-      float ambientShadow = 1.0 - 0.5 * (negDot * negDot);
+      float ambientShadow = 1 - 0.5 * (negDot * negDot);
 
       OUT.NonAmbientColor  = texDiffuse * PS_SunlightColor * diffuseContribution;
       OUT.AmbientColor     = texDiffuse * hemisphericAmbient * ambientShadow;
@@ -639,7 +639,7 @@ LIGHT_OUTPUT CalculateLighting( LIGHT_INPUT IN )
 
       if ( IN.WantFresnel )
       {
-         float fresnel = saturate( pow( saturate( 1.0 - dot( eyeVector, IN.WorldNormal ) ), 4 ) + 1.0 - 0.55 );
+         float fresnel = saturate( pow( saturate( 1 - dot( eyeVector, IN.WorldNormal ) ), 4 ) + 1.0 - 0.55 );
 
          float reflectionLevel = IN.ReflectionLevel * fresnel;
 
@@ -714,7 +714,7 @@ float3 CalculateWorldShadowColor( float2 texCoord )
 
    float2 shadowCoord = ( cell + ( cellCoord * 2 + 1.0 / 512.0 ) * ( 256.0 / 257.0 ) ) / 3 + PS_WorldShadowMapUVOffset.xy;
 
-   shadowCoord.y = 1 - shadowCoord.y;
+   shadowCoord.y = 1.0 - shadowCoord.y;
 
    float4 texShadow = tex2D( TexMap7, shadowCoord );
 
@@ -836,7 +836,7 @@ float4 CalculateFinalColor( VS_OUTPUT IN, LIGHT_OUTPUT L, float alpha )
 
    #endif
 
-   float4 color = float4( ( L.NonAmbientColor + L.AmbientColor ) * colorMultiplier, (1.0f - step(alpha, 0.0f)) * max( alpha, L.Alpha ) );
+   float4 color = float4( ( L.NonAmbientColor + L.AmbientColor ) * colorMultiplier, (1 - step(alpha, 0.0f)) * max( alpha, L.Alpha ) );
 
    #ifdef USES_SHADERCOLORSCALE
 
