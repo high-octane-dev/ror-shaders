@@ -29,18 +29,26 @@ VSOut vs_main( VS_INPUT IN )
    return OUT;
 }
 
-float4 ps_main( VSOut IN ) : COLOR
+struct PSIn {
+   float2 TexCoord0 : TEXCOORD0;
+   float4 TexCoord[4] : TEXCOORD1;
+};
+
+float4 ps_main( PSIn IN ) : COLOR
 {
-   float3 blurredColor =
-      tex2D( TexMap1, IN.TexCoord1.xy ) * PS_HDR_BlurKernel.x +
-      tex2D( TexMap3, IN.TexCoord1.zw ) * PS_HDR_BlurKernel.y +
-      tex2D( TexMap1, IN.TexCoord2.xy ) * PS_HDR_BlurKernel.z +
-      tex2D( TexMap3, IN.TexCoord2.zw ) * PS_HDR_BlurKernel.w +
-      tex2D( TexMap2, IN.TexCoord3.xy ) * PS_HDR_BlurKernel.x +
-      tex2D( TexMap4, IN.TexCoord3.zw ) * PS_HDR_BlurKernel.y +
-      tex2D( TexMap2, IN.TexCoord4.xy ) * PS_HDR_BlurKernel.z +
-      tex2D( TexMap4, IN.TexCoord4.zw ) * PS_HDR_BlurKernel.w +
-      tex2D( TexMap0, IN.TexCoord0 ) * PS_HDR_BlurCenter.x;
+   float3 blur0 =
+      tex2D( TexMap1, IN.TexCoord[0].xy ) * PS_HDR_BlurKernel.x +
+      tex2D( TexMap3, IN.TexCoord[0].zw ) * PS_HDR_BlurKernel.y;
+
+   float3 blur1 =
+      tex2D( TexMap1, IN.TexCoord[1].xy ) * PS_HDR_BlurKernel.z +
+      tex2D( TexMap3, IN.TexCoord[1].zw ) * PS_HDR_BlurKernel[3] +
+      tex2D( TexMap2, IN.TexCoord[2].xy ) * PS_HDR_BlurKernel.x +
+      tex2D( TexMap4, IN.TexCoord[2].zw ) * PS_HDR_BlurKernel.y +
+      tex2D( TexMap2, IN.TexCoord[3].xy ) * PS_HDR_BlurKernel.z +
+      tex2D( TexMap4, IN.TexCoord[3].zw ) * PS_HDR_BlurKernel.w;
+
+   float3 blurredColor = blur0 + blur1 + tex2D( TexMap0, IN.TexCoord0 ) * PS_HDR_BlurCenter.x;
 
    return float4( blurredColor, 1 );
 }
